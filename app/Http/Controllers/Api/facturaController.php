@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 use App\Models\Api\Factura;
+use App\Models\Api\Producto;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -21,52 +22,78 @@ class facturaController extends Controller
         return response() ->json($factura, 200);
     }
 
-    public function store(Request $request){
+    public function store(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'cliente' => 'required',
+        'tipo_factura' => 'required',
+        'producto' => 'required',
+        'cantidad' => 'required',
+        'precio' => 'required',
+        'subtotal' => 'required',
+        'total' => 'required',
+    ]);
 
-        $validator = Validator::make($request->all(), [
-            'cliente'=> 'required',
-            'tipo_factura'=> 'required',
-            'producto'=> 'required',
-            'cantidad'=> 'required',
-            'subtotal'=> 'required',
-            'total'=> 'required',
-        ]);
-
-        if($validator->fails()){
-            $data = [
-                'message' => 'Error en la validacion',
-                'errors'=> $validator->errors(),
-                'status' => 400,
-            ];
-            return response() ->json($data, 400);
-        }
-
-        $factura = Factura::create([
-            'cliente'=> $request->cliente,
-            'tipo_factura'=> $request->tipo_factura,
-            'producto'=> $request->producto,
-            'cantidad' => $request->cantidad,
-            'subtotal'=> $request->subtotal,
-            'total' => $request->total,
-        ]);
-
-        if(!$factura){
-            $data = [
-                'message'=> 'Error al crear la facutra',
-                'status'=> 500,
-            ];
-            return response()->json($data, 500);
-        }
-
+    if ($validator->fails()) {
         $data = [
-            'factura' => $factura,
-            'status' => 201
+            'message' => 'Error en la validación',
+            'errors' => $validator->errors(),
+            'status' => 400,
         ];
-
-        return response()->json($data, 201);
-
+        return response()->json($data, 400);
     }
-    
+
+    // Obtener el producto por nombre
+    $producto = Producto::where('name', $request->producto)->first();
+
+    if (!$producto) {
+        $data = [
+            'message' => 'Producto no encontrado',
+            'status' => 404,
+        ];
+        return response()->json($data, 404);
+    }
+
+    // Verificar si hay suficiente stock
+    if ($producto->stock < $request->cantidad) {
+        $data = [
+            'message' => 'Stock insuficiente',
+            'status' => 400,
+        ];
+        return response()->json($data, 400);
+    }
+
+    // Crear la factura
+    $factura = Factura::create([
+        'cliente' => $request->cliente,
+        'tipo_factura' => $request->tipo_factura,
+        'producto' => $request->producto,
+        'precio' => $request->precio,
+        'cantidad' => $request->cantidad,
+        'subtotal' => $request->subtotal,
+        'total' => $request->total,
+    ]);
+
+    if (!$factura) {
+        $data = [
+            'message' => 'Error al crear la factura',
+            'status' => 500,
+        ];
+        return response()->json($data, 500);
+    }
+
+    // Actualizar el stock del producto
+    $producto->stock -= $request->cantidad;
+    $producto->save();
+
+    $data = [
+        'factura' => $factura,
+        'status' => 201,
+    ];
+
+    return response()->json($data, 201);
+}
+
 
     public function show($id){
         $factura = Factura::find($id);
@@ -124,6 +151,7 @@ class facturaController extends Controller
             'cliente'=> 'required',
             'tipo_factura'=> 'required',
             'producto'=> 'required',
+            'precio' => 'required',
             'cantidad'=>'required',
             'subtotal'=>'required',
             'total'=> 'required',
@@ -142,6 +170,7 @@ class facturaController extends Controller
         $factura->cliente = $request->cliente;
         $factura->tipo_factura = $request->tipo_factura;
         $factura->producto = $request->producto;
+        $factura->precio = $request->precio;
         $factura->cantidad = $request->cantidad;
         $factura->subtotal = $request->subtotal;
         $factura->total = $request->total;
@@ -160,6 +189,9 @@ class facturaController extends Controller
         }
         if($request->has('producto')){
             $factura->producto = $request->producto;
+        }
+        if($request->has('precio')){
+            $factura->precio = $request->precio;
         }
         if($request->has('cantidad')){
             $factura->cantidad = $request->cantidad;

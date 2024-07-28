@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('cliente');
             $table->string('tipo_factura');
             $table->string('producto');
+            $table->string('precio');
             $table->string('cantidad');
             $table->string('subtotal');
             $table->string('total');

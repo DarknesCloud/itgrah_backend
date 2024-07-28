@@ -13,6 +13,7 @@ class Factura extends Model
         "cliente",
         "tipo_factura",
         "producto",
+        "precio",
         "cantidad",
         "subtotal",
         "total",
